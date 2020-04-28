@@ -1,15 +1,17 @@
 package main
 
 import (
-	"os"
 	"sync"
 
-	"github.com/iterum-provenance/combiner/uploader"
+	"github.com/iterum-provenance/iterum-go/env"
+	"github.com/iterum-provenance/iterum-go/minio"
+	"github.com/iterum-provenance/iterum-go/transmit"
+	"github.com/iterum-provenance/iterum-go/util"
 
-	"github.com/iterum-provenance/combiner/util"
 	"github.com/iterum-provenance/sidecar/messageq"
 	"github.com/iterum-provenance/sidecar/store"
-	"github.com/iterum-provenance/sidecar/transmit"
+
+	"github.com/iterum-provenance/combiner/uploader"
 )
 
 func main() {
@@ -22,22 +24,21 @@ func main() {
 	downloaderSocketBridge := make(chan transmit.Serializable, downloaderSocketBridgeBufferSize)
 
 	// Download manager setup
-	downloadManager := store.NewDownloadManager(mqDownloaderBridge, downloaderSocketBridge)
+	minioConf, err := minio.NewMinioConfigFromEnv() // defaults to an output setup
+	util.PanicIfErr(err, "")
+	minioConf.TargetBucket = "INVALID" // adjust such that the target output is unusable
+	err = minioConf.Connect()
+	util.PanicIfErr(err, "")
+	downloadManager := store.NewDownloadManager(minioConf, mqDownloaderBridge, downloaderSocketBridge)
 	downloadManager.Start(&wg)
 
-	brokerURL := os.Getenv("BROKER_URL")
-	inputQueue := os.Getenv("INPUT_QUEUE")
-
 	// MessageQueue setup
-	mqListener, err := messageq.NewListener(mqDownloaderBridge, brokerURL, inputQueue)
+	mqListener, err := messageq.NewListener(mqDownloaderBridge, env.MQBrokerURL, env.MQInputQueue)
 	util.Ensure(err, "MessageQueue listener succesfully created and listening")
 	mqListener.Start(&wg)
 
-	daemonURL := os.Getenv("DAEMON_URL")
-	pipelineHash := os.Getenv("PIPELINE_HASH")
-	datasetName := os.Getenv("DATASET_NAME")
-
-	uploaderListener := uploader.NewListener(downloaderSocketBridge, daemonURL+"/"+datasetName+"/pipeline_result/"+pipelineHash)
+	uri := env.DaemonURL + "/" + env.DaemonDataset + "/pipeline_result/" + env.PipelineHash
+	uploaderListener := uploader.NewListener(downloaderSocketBridge, uri)
 	uploaderListener.Start(&wg)
 
 	wg.Wait()

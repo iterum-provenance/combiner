@@ -8,8 +8,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/iterum-provenance/sidecar/util"
 	"github.com/prometheus/common/log"
+
+	"github.com/iterum-provenance/iterum-go/util"
 )
 
 // constructMultiFileRequest creates a new file upload http request with optional extra otherParams
@@ -49,7 +50,7 @@ func constructMultiFileRequest(url string, otherParams map[string]string, nameFi
 	return
 }
 
-func PostMultipartForm(url string, filemap map[string]string) (response *http.Response, err error) {
+func postMultipartForm(url string, filemap map[string]string) (response *http.Response, err error) {
 	defer util.ReturnErrOnPanic(&err)()
 	request, err := constructMultiFileRequest(url, nil, filemap)
 	if err != nil {

@@ -5,14 +5,14 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/iterum-provenance/sidecar/data"
-	"github.com/iterum-provenance/sidecar/transmit"
+	desc "github.com/iterum-provenance/iterum-go/descriptors"
+	"github.com/iterum-provenance/iterum-go/transmit"
 	"github.com/prometheus/common/log"
 )
 
 // Listener is the structure that listens to RabbitMQ and redirects messages to a channel
 type Listener struct {
-	downloadChannel <-chan transmit.Serializable // data.RemoteFragmentDesc
+	downloadChannel <-chan transmit.Serializable // desc.RemoteFragmentDesc
 	DaemonURL       string
 }
 
@@ -26,7 +26,7 @@ func NewListener(channel <-chan transmit.Serializable, daemonURL string) Listene
 func (listener Listener) StartBlocking() {
 	for message := range listener.downloadChannel {
 		fmt.Printf("Received on channel: %v\n", message)
-		lfd := fragmentDesc{*message.(*data.LocalFragmentDesc)}
+		lfd := fragmentDesc{*message.(*desc.LocalFragmentDesc)}
 
 		filemap := make(map[string]string)
 
@@ -37,7 +37,7 @@ func (listener Listener) StartBlocking() {
 		fmt.Printf("Frag: %v\n", lfd.Files)
 		fmt.Printf("Sending file to daemon..\n")
 		fmt.Printf("DaemonUrl: %s..\n", listener.DaemonURL)
-		response, err := PostMultipartForm(listener.DaemonURL, filemap)
+		response, err := postMultipartForm(listener.DaemonURL, filemap)
 		if err != nil {
 			log.Errorf("Upload failed due to: '%v'", err)
 		}
