@@ -3,7 +3,6 @@ package main
 import (
 	"sync"
 
-	"github.com/iterum-provenance/combiner/daemon"
 	"github.com/iterum-provenance/iterum-go/env"
 	"github.com/iterum-provenance/iterum-go/minio"
 	"github.com/iterum-provenance/iterum-go/transmit"
@@ -11,11 +10,14 @@ import (
 	"github.com/iterum-provenance/sidecar/manager"
 	"github.com/iterum-provenance/sidecar/messageq"
 	"github.com/iterum-provenance/sidecar/store"
+	"github.com/prometheus/common/log"
 
+	"github.com/iterum-provenance/combiner/daemon"
 	"github.com/iterum-provenance/combiner/uploader"
 )
 
 func main() {
+	log.Base().SetLevel("DEBUG")
 	var wg sync.WaitGroup
 
 	mqDownloaderBridgeBufferSize := 10
