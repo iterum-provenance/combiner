@@ -3,6 +3,7 @@ package main
 import (
 	"sync"
 
+	"github.com/iterum-provenance/iterum-go/daemon"
 	"github.com/iterum-provenance/iterum-go/env"
 	"github.com/iterum-provenance/iterum-go/minio"
 	"github.com/iterum-provenance/iterum-go/transmit"
@@ -12,7 +13,6 @@ import (
 	"github.com/iterum-provenance/sidecar/store"
 	"github.com/prometheus/common/log"
 
-	"github.com/iterum-provenance/combiner/daemon"
 	"github.com/iterum-provenance/combiner/uploader"
 )
 
