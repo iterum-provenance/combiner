@@ -12,13 +12,14 @@ import (
 // Listener is the structure that listens to RabbitMQ and redirects messages to a channel
 type Listener struct {
 	downloadChannel <-chan transmit.Serializable // desc.RemoteFragmentDesc
+	complete        chan<- transmit.Serializable // desc.FinishedFragmentMessage
 	DaemonURL       string
 }
 
 // NewListener creates a new uploader listener
-func NewListener(channel <-chan transmit.Serializable, daemonURL string) Listener {
+func NewListener(channel, complete chan transmit.Serializable, daemonURL string) Listener {
 
-	return Listener{channel, daemonURL}
+	return Listener{channel, complete, daemonURL}
 }
 
 // StartBlocking listens on the rabbitMQ messagequeue and redirects messages on the INPUT_QUEUE to a channel
@@ -40,13 +41,15 @@ func (listener Listener) StartBlocking() {
 		}
 		switch response.StatusCode {
 		case http.StatusOK:
+			listener.complete <- &desc.FinishedFragmentMessage{FragmentID: lfd.Metadata.FragmentID}
 			break
 		default:
 			log.Fatalf("Error: POST multipart form failed, daemon responded with statuscode %v", response.StatusCode)
 			return
 		}
-
 	}
+	log.Infoln("Uploader listener is done, finishing up...")
+	close(listener.complete)
 }
 
 // Start asychronously calls StartBlocking via Gorouting

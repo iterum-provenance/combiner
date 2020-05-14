@@ -26,6 +26,9 @@ func main() {
 	downloaderSocketBridgeBufferSize := 10
 	downloaderSocketBridge := make(chan transmit.Serializable, downloaderSocketBridgeBufferSize)
 
+	uploaderAcknowledgerBridgeBufferSize := 10
+	uploaderAcknowledgerBridge := make(chan transmit.Serializable, uploaderAcknowledgerBridgeBufferSize)
+
 	// Download manager setup
 	daemonConfig := daemon.NewDaemonConfigFromEnv()
 	minioConf, err := minio.NewMinioConfigFromEnv() // defaults to an output setup
@@ -42,12 +45,15 @@ func main() {
 	mqListener.Start(&wg)
 
 	uri := daemonConfig.DaemonURL + "/" + daemonConfig.Dataset + "/pipeline_result/" + env.PipelineHash
-	uploaderListener := uploader.NewListener(downloaderSocketBridge, uri)
+	uploaderListener := uploader.NewListener(downloaderSocketBridge, uploaderAcknowledgerBridge, uri)
 	uploaderListener.Start(&wg)
 
 	usChecker := manager.NewUpstreamChecker(env.ManagerURL, env.PipelineHash, env.ProcessName, 5)
 	usChecker.Start(&wg)
 	usChecker.Register <- mqListener.CanExit
+
+	acknowledger := messageq.NewAcknowledger(mqListener.ToAcknowledge, uploaderAcknowledgerBridge)
+	acknowledger.Start(&wg)
 
 	wg.Wait()
 }
