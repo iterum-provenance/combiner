@@ -40,7 +40,7 @@ func main() {
 	downloadManager.Start(&wg)
 
 	// MessageQueue setup
-	mqListener, err := messageq.NewListener(mqDownloaderBridge, env.MQBrokerURL, env.MQInputQueue)
+	mqListener, err := messageq.NewListener(mqDownloaderBridge, uploaderAcknowledgerBridge, env.MQBrokerURL, env.MQInputQueue)
 	util.Ensure(err, "MessageQueue listener succesfully created and listening")
 	mqListener.Start(&wg)
 
@@ -51,9 +51,6 @@ func main() {
 	usChecker := manager.NewUpstreamChecker(env.ManagerURL, env.PipelineHash, env.ProcessName, 5)
 	usChecker.Start(&wg)
 	usChecker.Register <- mqListener.CanExit
-
-	acknowledger := messageq.NewAcknowledger(mqListener.ToAcknowledge, uploaderAcknowledgerBridge)
-	acknowledger.Start(&wg)
 
 	wg.Wait()
 }
