@@ -13,6 +13,7 @@ import (
 	"github.com/iterum-provenance/sidecar/store"
 	"github.com/prometheus/common/log"
 
+	_ "github.com/iterum-provenance/combiner/env" // Run the init script checking the env variable values
 	"github.com/iterum-provenance/combiner/uploader"
 )
 
