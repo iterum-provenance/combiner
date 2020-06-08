@@ -41,7 +41,7 @@ func main() {
 	downloadManager.Start(&wg)
 
 	// MessageQueue setup
-	mqListener, err := messageq.NewListener(mqDownloaderBridge, uploaderAcknowledgerBridge, env.MQBrokerURL, env.MQInputQueue)
+	mqListener, err := messageq.NewListener(mqDownloaderBridge, uploaderAcknowledgerBridge, env.MQBrokerURL, env.MQInputQueue, env.MQPrefetchCount)
 	util.Ensure(err, "MessageQueue listener succesfully created and listening")
 	mqListener.Start(&wg)
 
