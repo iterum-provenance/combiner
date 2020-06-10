@@ -37,7 +37,7 @@ func (listener Listener) StartBlocking() {
 		log.Debugf("Sending files to daemon..\n")
 		response, err := postMultipartForm(listener.DaemonURL, filemap)
 		if err != nil {
-			log.Fatalf("Upload failed due to: '%v'", err)
+			log.Fatalf("Upload errored due to: '%v'", err)
 		}
 		switch response.StatusCode {
 		case http.StatusOK:

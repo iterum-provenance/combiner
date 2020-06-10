@@ -18,7 +18,7 @@ import (
 )
 
 func main() {
-	log.Base().SetLevel("DEBUG")
+	log.Base().SetLevel("INFO")
 	var wg sync.WaitGroup
 
 	mqDownloaderBridgeBufferSize := 10
