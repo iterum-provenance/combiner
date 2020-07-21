@@ -8,8 +8,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/prometheus/common/log"
-
 	"github.com/iterum-provenance/iterum-go/util"
 )
 
@@ -22,15 +20,11 @@ func constructMultiFileRequest(url string, otherParams map[string]string, nameFi
 
 	for filename, path := range nameFileMap {
 		file, err := os.Open(path)
-		if err != nil {
-			log.Errorf("Upload failed due to: '%v'", err)
-		}
+		util.PanicIfErr(err, "")
 		defer file.Close()
 
 		part, err := writer.CreateFormFile(filepath.Base(path), filename)
-		if err != nil {
-			log.Errorf("Upload failed due to: '%v'", err)
-		}
+		util.PanicIfErr(err, "")
 		io.Copy(part, file)
 	}
 
@@ -38,25 +32,19 @@ func constructMultiFileRequest(url string, otherParams map[string]string, nameFi
 		_ = writer.WriteField(key, val)
 	}
 	err = writer.Close()
-	if err != nil {
-		log.Errorf("Upload failed due to: '%v'", err)
-	}
-	request, err = http.NewRequest("POST", url, body)
-	if err != nil {
-		log.Errorf("Upload failed due to: '%v'", err)
-	}
-	request.Header.Add("Content-Type", writer.FormDataContentType())
+	util.PanicIfErr(err, "")
 
+	request, err = http.NewRequest("POST", url, body)
+	util.PanicIfErr(err, "")
+
+	request.Header.Add("Content-Type", writer.FormDataContentType())
 	return
 }
 
 func postMultipartForm(url string, filemap map[string]string) (response *http.Response, err error) {
 	defer util.ReturnErrOnPanic(&err)()
 	request, err := constructMultiFileRequest(url, nil, filemap)
-	if err != nil {
-		log.Errorf("Upload failed due to: '%v'", err)
-	}
-
+	util.PanicIfErr(err, "")
 	client := &http.Client{}
 	return client.Do(request)
 }

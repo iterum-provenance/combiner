@@ -1,55 +1,52 @@
 package main
 
 import (
+	"path"
 	"sync"
 
 	"github.com/iterum-provenance/iterum-go/daemon"
-	"github.com/iterum-provenance/iterum-go/env"
-	"github.com/iterum-provenance/iterum-go/minio"
+	"github.com/iterum-provenance/iterum-go/manager"
+	"github.com/iterum-provenance/iterum-go/process"
 	"github.com/iterum-provenance/iterum-go/transmit"
 	"github.com/iterum-provenance/iterum-go/util"
-	"github.com/iterum-provenance/sidecar/manager"
-	"github.com/iterum-provenance/sidecar/messageq"
+	mq "github.com/iterum-provenance/sidecar/messageq"
 	"github.com/iterum-provenance/sidecar/store"
-	"github.com/prometheus/common/log"
 
-	_ "github.com/iterum-provenance/combiner/env" // Run the init script checking the env variable values
 	"github.com/iterum-provenance/combiner/uploader"
 )
 
 func main() {
-	log.Base().SetLevel("INFO")
+	// log.Base().SetLevel("DEBUG")
 	var wg sync.WaitGroup
 
+	// Incoming messages from the queue are passed on for downloading
 	mqDownloaderBridgeBufferSize := 10
 	mqDownloaderBridge := make(chan transmit.Serializable, mqDownloaderBridgeBufferSize)
 
-	downloaderSocketBridgeBufferSize := 10
-	downloaderSocketBridge := make(chan transmit.Serializable, downloaderSocketBridgeBufferSize)
+	// Connect minio downloader to daemon uploader
+	downloaderUploaderBridgeBufferSize := 10
+	downloaderUploaderBridge := make(chan transmit.Serializable, downloaderUploaderBridgeBufferSize)
 
+	// Connect uploaded messages to the acknowledger of the mqListener
 	uploaderAcknowledgerBridgeBufferSize := 10
 	uploaderAcknowledgerBridge := make(chan transmit.Serializable, uploaderAcknowledgerBridgeBufferSize)
 
-	// Download manager setup
-	daemonConfig := daemon.NewDaemonConfigFromEnv()
-	minioConf, err := minio.NewMinioConfigFromEnv() // defaults to an output setup
-	util.PanicIfErr(err, "")
-	minioConf.TargetBucket = "INVALID" // adjust such that the target output is unusable
-	err = minioConf.Connect()
-	util.PanicIfErr(err, "")
-	downloadManager := store.NewDownloadManager(minioConf, mqDownloaderBridge, downloaderSocketBridge)
-	downloadManager.Start(&wg)
-
-	// MessageQueue setup
-	mqListener, err := messageq.NewListener(mqDownloaderBridge, uploaderAcknowledgerBridge, env.MQBrokerURL, env.MQInputQueue, env.MQPrefetchCount)
+	// Consume messages from the queue, passing it on to the download manager
+	mqListener, err := mq.NewListener(mqDownloaderBridge, uploaderAcknowledgerBridge, mq.BrokerURL, mq.InputQueue, mq.PrefetchCount)
 	util.Ensure(err, "MessageQueue listener succesfully created and listening")
 	mqListener.Start(&wg)
 
-	uri := daemonConfig.DaemonURL + "/" + daemonConfig.Dataset + "/pipeline_result/" + env.PipelineHash
-	uploaderListener := uploader.NewListener(downloaderSocketBridge, uploaderAcknowledgerBridge, uri)
-	uploaderListener.Start(&wg)
+	// Pass the consumed messages to the downloader
+	downloadManager := store.NewDownloadManager(process.DataVolumePath, mqDownloaderBridge, downloaderUploaderBridge)
+	downloadManager.Start(&wg)
 
-	usChecker := manager.NewUpstreamChecker(env.ManagerURL, env.PipelineHash, env.ProcessName, 5)
+	// After downloading, upload thhe data to the daemon
+	uri := path.Join(daemon.URL, daemon.Dataset, "pipeline_result", process.PipelineHash)
+	daemonUploader := uploader.NewDaemonUploader(downloaderUploaderBridge, uploaderAcknowledgerBridge, uri)
+	daemonUploader.Start(&wg)
+
+	// Periodically check until previous steps are done, meaning that if we finish the queue now, it will be the last messages
+	usChecker := manager.NewUpstreamChecker(manager.URL, process.PipelineHash, process.Name, 5)
 	usChecker.Start(&wg)
 	usChecker.Register <- mqListener.CanExit
 
