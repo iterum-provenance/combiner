@@ -41,7 +41,7 @@ func main() {
 	downloadManager.Start(&wg)
 
 	// After downloading, upload thhe data to the daemon
-	uri := path.Join(daemon.URL, daemon.Dataset, "pipeline_result", process.PipelineHash)
+	uri := daemon.URL + path.Join("/", daemon.Dataset, "pipeline_result", process.PipelineHash)
 	daemonUploader := uploader.NewDaemonUploader(downloaderUploaderBridge, uploaderAcknowledgerBridge, uri)
 	daemonUploader.Start(&wg)
 
