@@ -1,12 +1,16 @@
+// Package uploader is responsible for uploading all files associated with a fragment to the daemon.
+// It receives LocalFragmentDesc structures and parses them into its own fragmentDesc structure.
+// Subsequently, it constructs a single MultipartForm Request that uploads all the files to the Daemon.
 package uploader
 
 import (
 	"net/http"
 	"sync"
 
+	"github.com/prometheus/common/log"
+
 	desc "github.com/iterum-provenance/iterum-go/descriptors"
 	"github.com/iterum-provenance/iterum-go/transmit"
-	"github.com/prometheus/common/log"
 )
 
 // DaemonUploader is the structure that uploads data to the daemon

@@ -10,6 +10,8 @@ import (
 	"github.com/iterum-provenance/iterum-go/process"
 	"github.com/iterum-provenance/iterum-go/transmit"
 	"github.com/iterum-provenance/iterum-go/util"
+
+	// TODO: Fix this dependency by no longer needing it
 	"github.com/iterum-provenance/sidecar/store"
 
 	"github.com/iterum-provenance/combiner/uploader"
@@ -18,6 +20,8 @@ import (
 func main() {
 	// log.Base().SetLevel("DEBUG")
 	var wg sync.WaitGroup
+
+	// #################### General channel setup #################### \\
 
 	// Incoming messages from the queue are passed on for downloading
 	mqDownloaderBridgeBufferSize := 10
@@ -30,6 +34,8 @@ func main() {
 	// Connect uploaded messages to the acknowledger of the mqListener
 	uploaderAcknowledgerBridgeBufferSize := 10
 	uploaderAcknowledgerBridge := make(chan transmit.Serializable, uploaderAcknowledgerBridgeBufferSize)
+
+	// #################### Actual body #################### \\
 
 	// Consume messages from the queue, passing it on to the download manager
 	mqListener, err := mq.NewListener(mqDownloaderBridge, uploaderAcknowledgerBridge, mq.BrokerURL, mq.InputQueue, mq.PrefetchCount)
@@ -49,6 +55,8 @@ func main() {
 	usChecker := manager.NewUpstreamChecker(manager.URL, process.PipelineHash, process.Name, 5)
 	usChecker.Start(&wg)
 	usChecker.Register <- mqListener.CanExit
+
+	// #################### Finish up #################### \\
 
 	wg.Wait()
 }
