@@ -1,4 +1,4 @@
-package main
+package downloader
 
 import (
 	"fmt"
@@ -16,13 +16,13 @@ import (
 // Downloader is the structure that consumes RemoteFragmentDesc structures and downloads them
 type Downloader struct {
 	ToDownload chan transmit.Serializable // desc.RemoteFragmentDesc
-	Completed  chan []io.ReadCloser
+	Completed  chan transmit.Serializable // downloadedFragment
 	Minio      minio.Config
 	fragments  int
 }
 
 // NewDownloader creates a new Downloader and initiates a client of the Minio service
-func NewDownloader(toDownload chan transmit.Serializable, completed chan []io.ReadCloser) Downloader {
+func NewDownloader(toDownload, completed chan transmit.Serializable) Downloader {
 	minio := minio.NewMinioConfigFromEnv() // defaults to an upload setup
 	minio.TargetBucket = "INVALID"         // adjust such that the target output is unusable
 	if err := minio.Connect(); err != nil {
@@ -48,7 +48,7 @@ func (downloader Downloader) StartBlocking() {
 	// they download the files as file handles and send these on to the uploader
 	for i := 0; i < maxWorkers; i++ {
 		wg.Add(1)
-		go func(miniocfg minio.Config, toDownload chan transmit.Serializable, onComplete chan []io.ReadCloser) {
+		go func(miniocfg minio.Config, toDownload, onComplete chan transmit.Serializable) {
 			defer wg.Done()
 			for msg := range toDownload {
 				rfd := *msg.(*desc.RemoteFragmentDesc)
@@ -63,7 +63,8 @@ func (downloader Downloader) StartBlocking() {
 					fhandles = append(fhandles, fhandle)
 				}
 				downloader.fragments++
-				onComplete <- fhandles
+				dload := downloadedFragment{fhandles, rfd.Metadata}
+				onComplete <- &dload
 			}
 		}(downloader.Minio, downloader.ToDownload, downloader.Completed)
 	}
