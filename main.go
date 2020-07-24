@@ -6,10 +6,10 @@ import (
 
 	"github.com/iterum-provenance/iterum-go/daemon"
 	"github.com/iterum-provenance/iterum-go/manager"
+	mq "github.com/iterum-provenance/iterum-go/messageq"
 	"github.com/iterum-provenance/iterum-go/process"
 	"github.com/iterum-provenance/iterum-go/transmit"
 	"github.com/iterum-provenance/iterum-go/util"
-	mq "github.com/iterum-provenance/sidecar/messageq"
 	"github.com/iterum-provenance/sidecar/store"
 
 	"github.com/iterum-provenance/combiner/uploader"
